@@ -15,7 +15,7 @@ const { expect, request } = chai;
  * 1. PUT /files/:id/publish
  * 2. PUT /files/:id/unpublish
  */
-describe('FileController.js tests - publishing endpoints', () => {
+describe('fileController.js tests - publishing endpoints', () => {
   let dbClient;
   let db;
   let rdClient;
@@ -79,8 +79,8 @@ describe('FileController.js tests - publishing endpoints', () => {
     rdClient.quit();
   });
 
-  describe('PUT /publish', () => {
-    it('should set the isPublic field to true', (done) => {
+  describe('pUT /publish', () => {
+    it('should set the isPublic field to true', () => new Promise((done) => {
       request(app)
         .put(`/files/${file._id}/publish`)
         .set('X-Token', token)
@@ -90,9 +90,9 @@ describe('FileController.js tests - publishing endpoints', () => {
           expect(res.body.isPublic).to.be.true;
           done();
         });
-    });
+    }));
 
-    it('should reject changes if an invalid token is provided', (done) => {
+    it('should reject changes if an invalid token is provided', () => new Promise((done) => {
       request(app)
         .put(`/files/${file._id}/publish`)
         .set('X-Token', v4())
@@ -102,9 +102,9 @@ describe('FileController.js tests - publishing endpoints', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
 
-    it('should return not found if the file does not exist', (done) => {
+    it('should return not found if the file does not exist', () => new Promise((done) => {
       request(app)
         .put(`/files/${new ObjectId()}/publish`)
         .set('X-Token', token)
@@ -114,11 +114,11 @@ describe('FileController.js tests - publishing endpoints', () => {
           expect(res.body.error).to.equal('Not found');
           done();
         });
-    });
+    }));
   });
 
-  describe('PUT /unpublish', () => {
-    it('should set the isPublic field to false', (done) => {
+  describe('pUT /unpublish', () => {
+    it('should set the isPublic field to false', () => new Promise((done) => {
       request(app)
         .put(`/files/${file._id}/unpublish`)
         .set('X-Token', token)
@@ -128,9 +128,9 @@ describe('FileController.js tests - publishing endpoints', () => {
           expect(res.body.isPublic).to.be.false;
           done();
         });
-    });
+    }));
 
-    it('should reject changes if an invalid token is provided', (done) => {
+    it('should reject changes if an invalid token is provided', () => new Promise((done) => {
       request(app)
         .put(`/files/${file._id}/unpublish`)
         .set('X-Token', v4())
@@ -140,9 +140,9 @@ describe('FileController.js tests - publishing endpoints', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
 
-    it('should return not found if the file does not exist', (done) => {
+    it('should return not found if the file does not exist', () => new Promise((done) => {
       request(app)
         .put(`/files/${new ObjectId()}/unpublish`)
         .set('X-Token', token)
@@ -152,6 +152,6 @@ describe('FileController.js tests - publishing endpoints', () => {
           expect(res.body.error).to.equal('Not found');
           done();
         });
-    });
+    }));
   });
 });

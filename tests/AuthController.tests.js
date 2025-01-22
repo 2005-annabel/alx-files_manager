@@ -18,11 +18,12 @@ const randomString = () => Math.random().toString(16).substring(2);
 /**
  * Setup and teardown for MongoDB and Redis clients.
  */
-describe('AuthController Tests', () => {
+describe('authController Tests', () => {
   let dbClient;
   let db;
   let rdClient;
-  let asyncSet, asyncKeys, asyncDel;
+  let asyncSet; let asyncKeys; let
+    asyncDel;
   const DB_HOST = process.env.DB_HOST || 'localhost';
   const DB_PORT = process.env.DB_PORT || 27017;
   const DATABASE = process.env.DB_DATABASE || 'files_manager';
@@ -63,13 +64,13 @@ describe('AuthController Tests', () => {
 
     // Cleanup Redis keys and close connection
     const tokens = await asyncKeys('auth_*');
-    const deleteKeysOperations = tokens.map(key => asyncDel(key));
+    const deleteKeysOperations = tokens.map((key) => asyncDel(key));
     await Promise.all(deleteKeysOperations);
     rdClient.quit();
   });
 
-  describe('GET /connect', () => {
-    it('should login user and return token', (done) => {
+  describe('gET /connect', () => {
+    it('should login user and return token', () => new Promise((done) => {
       request(app)
         .get('/connect')
         .auth(user.email, initialPassword)
@@ -79,9 +80,9 @@ describe('AuthController Tests', () => {
           expect(res.body.token).to.be.a('string');
           done();
         });
-    });
+    }));
 
-    it('should return unauthorized if email is missing', (done) => {
+    it('should return unauthorized if email is missing', () => new Promise((done) => {
       request(app)
         .get('/connect')
         .auth('', user.password)
@@ -91,9 +92,9 @@ describe('AuthController Tests', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
 
-    it('should return unauthorized if password is missing', (done) => {
+    it('should return unauthorized if password is missing', () => new Promise((done) => {
       request(app)
         .get('/connect')
         .auth(user.email)
@@ -103,9 +104,9 @@ describe('AuthController Tests', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
 
-    it('should return unauthorized when credentials are missing', (done) => {
+    it('should return unauthorized when credentials are missing', () => new Promise((done) => {
       request(app)
         .get('/connect')
         .end((error, res) => {
@@ -114,9 +115,9 @@ describe('AuthController Tests', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
 
-    it('should return unauthorized when credentials are incorrect', (done) => {
+    it('should return unauthorized when credentials are incorrect', () => new Promise((done) => {
       const email = `${randomString()}@test.com`;
       const password = randomString();
       request(app)
@@ -128,11 +129,11 @@ describe('AuthController Tests', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
   });
 
-  describe('GET /users/me', () => {
-    it('should return user details with a valid token', (done) => {
+  describe('gET /users/me', () => {
+    it('should return user details with a valid token', () => new Promise((done) => {
       request(app)
         .get('/users/me')
         .set('X-Token', token)
@@ -144,9 +145,9 @@ describe('AuthController Tests', () => {
           expect(res.body.password).to.be.undefined;
           done();
         });
-    });
+    }));
 
-    it('should return unauthorized with an incorrect token', (done) => {
+    it('should return unauthorized with an incorrect token', () => new Promise((done) => {
       request(app)
         .get('/users/me')
         .set('X-Token', uuidv4())
@@ -156,19 +157,19 @@ describe('AuthController Tests', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
   });
 
-describe('GET /disconnect', () => {
-  it('should logout user from the system', (done) => {
-    request(app)
-      .get('/disconnect')
-      .set('X-Token', token)
-      .end((error, res) => {
-        expect(error).to.be.null;
-        expect(res).to.have.status(204);
-        done();
-      });
-  });
+  describe('gET /disconnect', () => {
+    it('should logout user from the system', () => new Promise((done) => {
+      request(app)
+        .get('/disconnect')
+        .set('X-Token', token)
+        .end((error, res) => {
+          expect(error).to.be.null;
+          expect(res).to.have.status(204);
+          done();
+        });
+    }));
   });
 });

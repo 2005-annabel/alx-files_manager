@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import dbClient from '../utils/db.js';
-import redisClient from '../utils/redis.js';
 import fs from 'fs';
 import path from 'path';
 import mime from 'mime-types';
+import redisClient from '../utils/redis';
+import dbClient from '../utils/db';
 
 class FilesController {
   static async postUpload(req, res) {
@@ -11,7 +11,9 @@ class FilesController {
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { name, type, parentId = 0, isPublic = false, data } = req.body;
+    const {
+      name, type, parentId = 0, isPublic = false, data,
+    } = req.body;
     if (!name) return res.status(400).json({ error: 'Missing name' });
     if (!type || !['folder', 'file', 'image'].includes(type)) return res.status(400).json({ error: 'Missing type' });
     if (type !== 'folder' && !data) return res.status(400).json({ error: 'Missing data' });
@@ -112,7 +114,7 @@ class FilesController {
 
     if (file.type === 'folder') return res.status(400).json({ error: "A folder doesn't have content" });
 
-    const size = req.query.size;
+    const { size } = req.query;
     let filePath = file.localPath;
     if (size) {
       filePath = `${file.localPath}_${size}`;

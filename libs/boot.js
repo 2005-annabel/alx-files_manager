@@ -1,3 +1,3 @@
 export default function boot() {
-    console.log('Booting the server...');
-  }
+  console.log('Booting the server...');
+}

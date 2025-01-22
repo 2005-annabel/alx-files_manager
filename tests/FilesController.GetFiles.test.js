@@ -18,7 +18,7 @@ const { expect, request } = chai;
   * 2. GET /files/:id
   * 3. GET /files/:id/data
   */
-describe('FileController.js tests - File info and data retrieval endpoints', () => {
+describe('fileController.js tests - File info and data retrieval endpoints', () => {
   let dbClient;
   let db;
   let rdClient;
@@ -100,147 +100,146 @@ describe('FileController.js tests - File info and data retrieval endpoints', () 
       rdClient.on('connect', async () => {
         await asyncSet(userOneTokenKey, userOne._id.toString());
         await asyncSet(userTwoTokenKey, userTwo._id.toString());
-          resolve();
-        });
+        resolve();
       });
-    }));
+    });
+  }));
+});
+
+after(async () => {
+  // Delete files
+  fs.rmdirSync(FOLDER_PATH, { recursive: true });
+
+  // Clear db collections
+  await db.collection('users').deleteMany({});
+  await db.collection('files').deleteMany({});
+  await db.dropDatabase();
+  await dbClient.close();
+
+  // Clear redis keys and close connection
+  const tokens = await asyncKeys('auth_*');
+  const deleteKeysOperations = [];
+  for (const key of tokens) {
+    deleteKeysOperations.push(asyncDel(key));
+  }
+  await Promise.all(deleteKeysOperations);
+  rdClient.quit();
+});
+
+describe('gET /files/:id', () => {
+  it('should return file details for an existing file given a valid token and user id', () => {
+    const file = files[0];
+    request(app)
+      .get(`/files/${file._id}`)
+      .set('X-Token', userOneToken)
+      .end((error, res) => {
+        const responseAttributes = ['id', 'userId', 'name', 'type', 'isPublic', 'parentId'];
+        expect(error).to.be.null;
+        expect(res).to.have.status(200);
+        expect(res.body).to.include.all.keys(responseAttributes);
+        expect(res.body.id).to.equal(file._id.toString());
+      });
   });
 
-  after(async () => {
-    // Delete files
-    fs.rmdirSync(FOLDER_PATH, { recursive: true });
-
-    // Clear db collections
-    await db.collection('users').deleteMany({});
-    await db.collection('files').deleteMany({});
-    await db.dropDatabase();
-    await dbClient.close();
-
-    // Clear redis keys and close connection
-    const tokens = await asyncKeys('auth_*');
-    const deleteKeysOperations = [];
-    for (const key of tokens) {
-      deleteKeysOperations.push(asyncDel(key));
-    }
-    await Promise.all(deleteKeysOperations);
-    rdClient.quit();
+  it('should reject the request if the token is invalid', () => {
+    const file = files[0];
+    request(app)
+      .get(`/files/${file._id}`)
+      .set('X-Token', v4())
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(401);
+        expect(res.body.error).to.equal('Unauthorized');
+      });
   });
 
-  describe('GET /files/:id', () => {
-    it('should return file details for an existing file given a valid token and user id', () => {
-      const file = files[0];
-      request(app)
-        .get(`/files/${file._id}`)
-        .set('X-Token', userOneToken)
-        .end((error, res) => {
-          const responseAttributes = ['id', 'userId', 'name', 'type', 'isPublic', 'parentId'];
-          expect(error).to.be.null;
-          expect(res).to.have.status(200);
-          expect(res.body).to.include.all.keys(responseAttributes);
-          expect(res.body.id).to.equal(file._id.toString());
-        });
-    });
+  it('should return not found if the file does not exist', () => {
+    request(app)
+      .get(`/files/${new ObjectId().toString()}`)
+      .set('X-Token', userOneToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(404);
+        expect(res.body.error).to.equal('Not found');
+      });
+  });
+});
 
-    it('should reject the request if the token is invalid', () => {
-      const file = files[0];
-      request(app)
-        .get(`/files/${file._id}`)
-        .set('X-Token', v4())
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(401);
-          expect(res.body.error).to.equal('Unauthorized');
-        });
-    });
+describe('gET /files/:id/data', () => {
+  it('should fetch data of specified file for an authenticated user', () => new Promise((done) => {
+    const file = files.find((file) => file.isPublic === true);
+    request(app)
+      .get(`/files/${file._id.toString()}/data`)
+      .set('X-Token', userOneToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(200);
+        expect(res.text).to.equal('Hello World');
+        done();
+      });
+  }));
 
-    it('should return not found if the file does not exist', () => {
-      request(app)
-        .get(`/files/${new ObjectId().toString()}`)
-        .set('X-Token', userOneToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(404);
-          expect(res.body.error).to.equal('Not found');
-        });
-    });
+  it('should allow cross-user access to public files', () => {
+    const file = files.find((file) => file.isPublic === true);
+    request(app)
+      .get(`/files/${file._id.toString()}/data`)
+      .set('X-Token', userTwoToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(200);
+        expect(res.text).to.equal('Hello World');
+      });
   });
 
-  describe('GET /files/:id/data', () => {
-    it('should fetch data of specified file for an authenticated user', (done) => {
-      const file = files.find((file) => file.isPublic === true);
-      request(app)
-        .get(`/files/${file._id.toString()}/data`)
-        .set('X-Token', userOneToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(200);
-          expect(res.text).to.equal('Hello World');
-          done();
-        });
-    });
-
-    it('should allow cross-user access to public files', () => {
-      const file = files.find((file) => file.isPublic === true);
-      request(app)
-        .get(`/files/${file._id.toString()}/data`)
-        .set('X-Token', userTwoToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(200);
-          expect(res.text).to.equal('Hello World');
-        });
-    });
-
-    it('should allow a user to view their own private files', () => {
-      const file = files.find((file) => file.isPublic === false);
-      request(app)
-        .get(`/files/${file._id.toString()}/data`)
-        .set('X-Token', userOneToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(200);
-          expect(res.text).to.equal('This is private');
-        });
-    });
-
-    it('should reject requests for private files that do not belong to the user', (done) => {
-      const file = files.find((file) => file.isPublic === false);
-      request(app)
-        .get(`/files/${file._id.toString()}/data`)
-        .set('X-Token', userTwoToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(404);
-          expect(res.body.error).to.equal('Not found');
-          done();
-        });
-    });
-
-    it('should reject requests for files that are folders', (done) => {
-      const folder = folders[0];
-      request(app)
-        .get(`/files/${folder._id}/data`)
-        .set('X-Token', userOneToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(400);
-          expect(res.body.error).to.equal("A folder doesn't have content");
-          done();
-        });
-    });
+  it('should allow a user to view their own private files', () => {
+    const file = files.find((file) => file.isPublic === false);
+    request(app)
+      .get(`/files/${file._id.toString()}/data`)
+      .set('X-Token', userOneToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(200);
+        expect(res.text).to.equal('This is private');
+      });
   });
 
-  describe('GET /files', () => {
-    
-    it('should fetch files with default parentId=0 and page=0', (done) => {
-      request(app)
-        .get('/files')
-        .set('X-Token', userOneToken)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(200);
-          expect(res.body).to.be.an('array');
-          done();
-        });
-    });
-  });
+  it('should reject requests for private files that do not belong to the user', () => new Promise((done) => {
+    const file = files.find((file) => file.isPublic === false);
+    request(app)
+      .get(`/files/${file._id.toString()}/data`)
+      .set('X-Token', userTwoToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(404);
+        expect(res.body.error).to.equal('Not found');
+        done();
+      });
+  }));
+
+  it('should reject requests for files that are folders', () => new Promise((done) => {
+    const folder = folders[0];
+    request(app)
+      .get(`/files/${folder._id}/data`)
+      .set('X-Token', userOneToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(400);
+        expect(res.body.error).to.equal("A folder doesn't have content");
+        done();
+      });
+  }));
+});
+
+describe('gET /files', () => {
+  it('should fetch files with default parentId=0 and page=0', () => new Promise((done) => {
+    request(app)
+      .get('/files')
+      .set('X-Token', userOneToken)
+      .end((error, res) => {
+        expect(error).to.be.null;
+        expect(res).to.have.status(200);
+        expect(res.body).to.be.an('array');
+        done();
+      });
+  }));
+});

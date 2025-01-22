@@ -16,7 +16,7 @@ const { expect, request } = chai;
  * Test cases for FileController.js endpoints:
  * 1. POST /files
  */
-describe('FileController.js tests - file upload endpoint', () => {
+describe('fileController.js tests - file upload endpoint', () => {
   let dbClient;
   let db;
   let rdClient;
@@ -77,7 +77,7 @@ describe('FileController.js tests - file upload endpoint', () => {
 
     // Clear redis keys and close connection
     const tokens = await asyncKeys('auth_*');
-    const thumbnailJobs = await asyncKeys('bull*')
+    const thumbnailJobs = await asyncKeys('bull*');
     const deleteKeysOperations = [];
     for (const key of tokens) {
       deleteKeysOperations.push(asyncDel(key));
@@ -89,7 +89,7 @@ describe('FileController.js tests - file upload endpoint', () => {
     rdClient.quit();
   });
 
-  describe('POST /files', () => {
+  describe('pOST /files', () => {
     let file;
     const data = Buffer.from('Hello World').toString('base64');
 
@@ -98,11 +98,11 @@ describe('FileController.js tests - file upload endpoint', () => {
         name: Math.random().toString(32).substring(2),
         type: 'file',
         isPublic: false,
-        data: data,
+        data,
       };
     });
 
-    it('should add a file to the database with parentId=0', (done) => {
+    it('should add a file to the database with parentId=0', () => new Promise((done) => {
       request(app)
         .post('/files')
         .set('X-Token', token)
@@ -121,9 +121,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(fs.readdirSync(FOLDER_PATH)).to.have.lengthOf.greaterThan(0);
           done();
         });
-    });
+    }));
 
-    it('should add a file to the database with a given parentId', (done) => {
+    it('should add a file to the database with a given parentId', () => new Promise((done) => {
       file.parentId = folder._id.toString();
       request(app)
         .post('/files')
@@ -136,9 +136,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(fs.readdirSync(FOLDER_PATH).length).to.equal(2);
           done();
         });
-    });
+    }));
 
-    it('should reject uploads using an incorrect token', (done) => {
+    it('should reject uploads using an incorrect token', () => new Promise((done) => {
       request(app)
         .post('/files')
         .set('X-Token', v4())
@@ -149,9 +149,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(res.body.error).to.equal('Unauthorized');
           done();
         });
-    });
+    }));
 
-    it('should reject uploads with missing name', (done) => {
+    it('should reject uploads with missing name', () => new Promise((done) => {
       delete file.name;
       request(app)
         .post('/files')
@@ -163,9 +163,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(res.body.error).to.equal('Missing name');
           done();
         });
-    });
+    }));
 
-    it('should reject uploads with missing type', (done) => {
+    it('should reject uploads with missing type', () => new Promise((done) => {
       delete file.type;
       request(app)
         .post('/files')
@@ -177,9 +177,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(res.body.error).to.equal('Missing type');
           done();
         });
-    });
+    }));
 
-    it('should reject uploads with missing data if they are files', (done) => {
+    it('should reject uploads with missing data if they are files', () => new Promise((done) => {
       delete file.data;
       request(app)
         .post('/files')
@@ -191,9 +191,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(res.body.error).to.equal('Missing data');
           done();
         });
-    });
+    }));
 
-    it('should reject uploads if parentId is not linked to any document', (done) => {
+    it('should reject uploads if parentId is not linked to any document', () => new Promise((done) => {
       file.parentId = new ObjectId().toString();
       request(app)
         .post('/files')
@@ -205,9 +205,9 @@ describe('FileController.js tests - file upload endpoint', () => {
           expect(res.body.error).to.equal('Parent not found');
           done();
         });
-    });
+    }));
 
-    it('should reject uploads if parentId is for a file or image and not a folder', (done) => {
+    it('should reject uploads if parentId is for a file or image and not a folder', () => new Promise((done) => {
       request(app)
         .post('/files')
         .set('X-Token', token)
@@ -225,6 +225,6 @@ describe('FileController.js tests - file upload endpoint', () => {
               done();
             });
         });
-    });
+    }));
   });
 });

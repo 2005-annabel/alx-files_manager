@@ -12,7 +12,7 @@ const { expect, request } = chai;
  * Test cases for UsersController.js endpoint:
  * 1. POST /users
  */
-describe('UsersController.js tests', () => {
+describe('usersController.js tests', () => {
   let dbClient;
   let db;
   let rdClient;
@@ -51,8 +51,8 @@ describe('UsersController.js tests', () => {
     rdClient.quit();
   });
 
-  describe('POST /users', () => {
-    it('should create a new user and add them to the database', (done) => {
+  describe('pOST /users', () => {
+    it('should create a new user and add them to the database', () => new Promise((done) => {
       request(app)
         .post('/users')
         .send(user)
@@ -64,9 +64,9 @@ describe('UsersController.js tests', () => {
           expect(res.body.email).to.equal(user.email);
           done();
         });
-    });
+    }));
 
-    it('should not allow duplicate users with the same email', (done) => {
+    it('should not allow duplicate users with the same email', () => new Promise((done) => {
       request(app)
         .post('/users')
         .send(user)
@@ -77,9 +77,9 @@ describe('UsersController.js tests', () => {
           expect(res.body.error).to.equal('Already exist');
           done();
         });
-    });
+    }));
 
-    it('should return a 400 status if email is missing', (done) => {
+    it('should return a 400 status if email is missing', () => new Promise((done) => {
       const invalidUser = { password: 'supersecretFYI' };
       request(app)
         .post('/users')
@@ -91,9 +91,9 @@ describe('UsersController.js tests', () => {
           expect(res.body.error).to.equal('Missing email');
           done();
         });
-    });
+    }));
 
-    it('should return a 400 status if password is missing', (done) => {
+    it('should return a 400 status if password is missing', () => new Promise((done) => {
       const invalidUser = { email: 'tester@mail.com' };
       request(app)
         .post('/users')
@@ -105,6 +105,6 @@ describe('UsersController.js tests', () => {
           expect(res.body.error).to.equal('Missing password');
           done();
         });
-    });
+    }));
   });
 });

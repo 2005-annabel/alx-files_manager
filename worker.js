@@ -1,9 +1,8 @@
 import { Queue } from 'bull';
-import dbClient from './utils/db.js';
-import redisClient from './utils/redis.js';
+import { ObjectId } from 'mongodb';
 import imageThumbnail from 'image-thumbnail';
 import fs from 'fs';
-import path from 'path';
+import dbClient from './utils/db';
 
 const fileQueue = new Queue('fileQueue');
 const userQueue = new Queue('userQueue');
@@ -17,11 +16,11 @@ fileQueue.process(async (job) => {
   if (!file) throw new Error('File not found');
 
   const sizes = [500, 250, 100];
-  for (const size of sizes) {
+  await Promise.all(sizes.map(async (size) => {
     const thumbnail = await imageThumbnail(file.localPath, { width: size });
     const thumbnailPath = `${file.localPath}_${size}`;
     fs.writeFileSync(thumbnailPath, thumbnail);
-  }
+  }));
 });
 
 userQueue.process(async (job) => {
