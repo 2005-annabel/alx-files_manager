@@ -17,7 +17,7 @@ class RedisClient {
     });
   }
 
-/**
+  /**
    * Checks if this client's connection to the Redis server is active.
    */
   isAlive() {
@@ -40,7 +40,7 @@ class RedisClient {
   }
 
   /**
-   * Removes the value of a given key. 
+   * Removes the value of a given key.
    */
   async del(key) {
     await promisify(this.client.DEL).bind(this.client)(key);
