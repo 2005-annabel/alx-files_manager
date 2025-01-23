@@ -1,110 +1,60 @@
-import chai from 'chai';
-import chaiHttp from 'chai-http';
-import { MongoClient } from 'mongodb';
-import { createClient } from 'redis';
-import { promisify } from 'util';
-import app from '../server';
+import { ObjectId } from 'mongodb';
+import sha1 from 'sha1';
+import dbClient from '../utils/db';
+import RedisClient from '../utils/redis';
 
-chai.use(chaiHttp);
-const { expect, request } = chai;
+class UsersController {
+  // Corrected postNew method
+  static async postNew(req, res) {
+    const { email, password } = req.body;
 
-/**
- * Test cases for UsersController.js endpoint:
- * 1. POST /users
- */
-describe('usersController.js tests', () => {
-  let dbClient;
-  let db;
-  let rdClient;
-  let asyncKeys;
-  let asyncDel;
-  const DB_HOST = process.env.DB_HOST || 'localhost';
-  const DB_PORT = process.env.DB_PORT || 27017;
-  const DATABASE = process.env.DB_DATABASE || 'files_manager';
-  const user = { email: 'tester@mail.com', password: 'supersecretFYI' };
+    // Handle missing email or password
+    if (!email) {
+      return res.status(400).json({ error: 'Missing email' });
+    }
+    if (!password) {
+      return res.status(400).json({ error: 'Missing password' });
+    }
 
-  before(async () => {
-    // Initialize database client and clear collections
-    dbClient = new MongoClient(`mongodb://${DB_HOST}:${DB_PORT}`, { useUnifiedTopology: true });
-    await dbClient.connect();
-    db = dbClient.db(DATABASE);
-    await db.collection('users').deleteMany({});
+    // Check if the user already exists
+    const user = await dbClient.db.collection('users').findOne({ email });
+    if (user) {
+      return res.status(400).json({ error: 'Already exist' });
+    }
 
-    // Initialize Redis client and prepare utility functions
-    rdClient = createClient();
-    asyncKeys = promisify(rdClient.keys).bind(rdClient);
-    asyncDel = promisify(rdClient.del).bind(rdClient);
-    await new Promise((resolve) => {
-      rdClient.on('connect', resolve);
+    // Hash the password and insert a new user
+    const hashedPassword = sha1(password);
+    const result = await dbClient.db.collection('users').insertOne({
+      email,
+      password: hashedPassword,
     });
-  });
 
-  after(async () => {
-    // Clean up database and Redis after tests
-    await db.collection('users').deleteOne({ email: user.email });
-    await db.dropDatabase();
-    await dbClient.close();
+    // Return success response
+    return res.status(201).json({ id: result.insertedId, email });
+  }
 
-    const redisKeys = await asyncKeys('bull*');
-    const deleteOperations = redisKeys.map((key) => asyncDel(key));
-    await Promise.all(deleteOperations);
-    rdClient.quit();
-  });
+  // Corrected getMe method
+  static async getMe(req, res) {
+    const token = req.headers['x-token'];
 
-  describe('pOST /users', () => {
-    it('should create a new user and add them to the database', () => new Promise((done) => {
-      request(app)
-        .post('/users')
-        .send(user)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(201);
-          expect(res.body).to.have.property('id');
-          expect(res.body).to.have.property('email');
-          expect(res.body.email).to.equal(user.email);
-          done();
-        });
-    }));
+    // Validate token and get userId
+    const userId = await RedisClient.get(`auth_${token}`);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    it('should not allow duplicate users with the same email', () => new Promise((done) => {
-      request(app)
-        .post('/users')
-        .send(user)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(400);
-          expect(res.body).to.have.property('error');
-          expect(res.body.error).to.equal('Already exist');
-          done();
-        });
-    }));
+    // Find user by userId
+    const user = await dbClient.db.collection('users').findOne({
+      _id: new ObjectId(userId),
+    });
 
-    it('should return a 400 status if email is missing', () => new Promise((done) => {
-      const invalidUser = { password: 'supersecretFYI' };
-      request(app)
-        .post('/users')
-        .send(invalidUser)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(400);
-          expect(res.body).to.have.property('error');
-          expect(res.body.error).to.equal('Missing email');
-          done();
-        });
-    }));
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    it('should return a 400 status if password is missing', () => new Promise((done) => {
-      const invalidUser = { email: 'tester@mail.com' };
-      request(app)
-        .post('/users')
-        .send(invalidUser)
-        .end((error, res) => {
-          expect(error).to.be.null;
-          expect(res).to.have.status(400);
-          expect(res.body).to.have.property('error');
-          expect(res.body.error).to.equal('Missing password');
-          done();
-        });
-    }));
-  });
-});
+    // Return user details
+    return res.status(200).json({ id: user._id, email: user.email });
+  }
+}
+
+export default UsersController;
